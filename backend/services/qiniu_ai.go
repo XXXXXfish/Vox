@@ -5,6 +5,7 @@ package services
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,6 +17,9 @@ import (
 
 // QINIU_ASR_ENDPOINT ASR 接口路径
 const QINIU_ASR_ENDPOINT = "/voice/asr"
+
+// QINIU_TTS_ENDPOINT TTS 接口路径
+const QINIU_TTS_ENDPOINT = "/voice/tts"
 
 // QiniuCloudService 实现了 AIService 接口
 type QiniuCloudService struct {
@@ -136,4 +140,69 @@ func (s *QiniuCloudService) Transcribe(ctx context.Context, audioUrl string, aud
 	}
 
 	return result.Data.Result.Text, nil
+}
+
+// TextToSpeech 实现 AIService 的 TextToSpeech 方法
+func (s *QiniuCloudService) TextToSpeech(ctx context.Context, text string, voiceId string) ([]byte, error) {
+	// 1. 构造请求体 (遵循文档的 JSON 结构)
+	requestBody := map[string]interface{}{
+		"audio": map[string]interface{}{
+			"voice_type":  voiceId, // 音色 ID
+			"encoding":    "mp3",   // 请求 MP3 格式的音频
+			"speed_ratio": 1.0,     // 默认语速
+		},
+		"request": map[string]string{
+			"text": text, // 需要合成的文本
+		},
+	}
+	bodyBytes, _ := json.Marshal(requestBody)
+
+	// 2. 创建 HTTP 请求 (POST /v1/voice/tts)
+	fullUrl := QINIU_LLM_URL + QINIU_TTS_ENDPOINT
+	req, err := http.NewRequestWithContext(ctx, "POST", fullUrl, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create TTS request: %w", err)
+	}
+
+	// 3. 鉴权 Header
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", s.apiKey))
+
+	// 4. 发送请求
+	resp, err := s.asrClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("tts api request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("tts api returned error status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	// 5. 解析响应 (包含 Base64 数据)
+	var ttsResponse struct {
+		Reqid     string `json:"reqid"`
+		Operation string `json:"operation"`
+		Data      string `json:"data"` // **Base64 编码的音频数据**
+		// 忽略其他字段
+	}
+
+	// a. 解码 JSON
+	if err := json.NewDecoder(resp.Body).Decode(&ttsResponse); err != nil {
+		return nil, fmt.Errorf("failed to decode TTS response: %w", err)
+	}
+
+	// b. 检查 Base64 数据
+	if ttsResponse.Data == "" {
+		return nil, fmt.Errorf("TTS response missing 'data' field (Base64 audio string)")
+	}
+
+	// 6. **Base64 解码音频数据**
+	audioData, err := base64.StdEncoding.DecodeString(ttsResponse.Data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode Base64 audio data: %w", err)
+	}
+
+	return audioData, nil // 返回原始 MP3 二进制数据
 }

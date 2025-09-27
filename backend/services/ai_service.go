@@ -19,4 +19,8 @@ type AIService interface {
 	// audioUrl: 音频文件的公网 URL
 	// audioFormat: 音频文件的格式 (如 "mp3")
 	Transcribe(ctx context.Context, audioUrl string, audioFormat string) (string, error)
+	// TextToSpeech 将文本转换为语音数据 (返回音频数据的 []byte)
+	// text: 需要合成的文本
+	// voiceId: 音色模型 ID (例如 male-01, female-02)
+	TextToSpeech(ctx context.Context, text string, voiceId string) ([]byte, error)
 }

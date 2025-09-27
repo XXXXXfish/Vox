@@ -46,6 +46,9 @@ func setupRouter(ctx *AppContext) *gin.Engine {
 
 		// **注册 ASR 转录 Handler**
 		api.POST("/transcribe", handlers.TranscribeHandler(ctx.AIService))
+
+		// **核心：注册 TTS 合成 Handler**
+		api.POST("/tts", handlers.TTSHandler(ctx.AIService))
 	}
 
 	return r
