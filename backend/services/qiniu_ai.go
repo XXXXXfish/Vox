@@ -57,7 +57,7 @@ func (s *QiniuCloudService) Chat(ctx context.Context, characterPrompt string, ch
 		ctx,
 		openai.ChatCompletionRequest{
 			// 请根据七牛云文档替换为他们支持的模型名，例如 qwen-max
-			Model:    "qwen-max",
+			Model:    "deepseek-v3",
 			Messages: openAIMessages,
 		},
 	)
