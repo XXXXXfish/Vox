@@ -1,28 +1,30 @@
-// handlers/chat.go
+// handlers/chat.go (更新 ChatRequest 结构体)
 
 package handlers
 
 import (
+	// ... (确保导入了 log, net/http, time, uuid) ...
 	"log"
 	"net/http"
 
 	"vox-backend/models"
-	"vox-backend/services" // 需要用到 services.AIService 和 services.Message 结构体
+	"vox-backend/services"
 
 	"github.com/gin-gonic/gin"
-	openai "github.com/sashabaranov/go-openai" // 用于定义用户消息的角色
+	"github.com/google/uuid" // 用于生成唯一的 SessionID
+	openai "github.com/sashabaranov/go-openai"
 	"gorm.io/gorm"
 )
 
 // ChatRequest 定义了聊天请求的 JSON 结构
 type ChatRequest struct {
-	CharacterID uint   `json:"character_id" binding:"required"` // 新增：要聊天的角色 ID
-	NewMessage  string `json:"new_message" binding:"required"`  // 新增：用户当前发送的消息
-	// Note: 聊天历史将在步骤 3.1 数据库持久化后再从 DB 加载，此处简化
+	CharacterID uint   `json:"character_id" binding:"required"`
+	NewMessage  string `json:"new_message" binding:"required"`
+	// 新增：会话ID。如果为空，则表示开始新会话。
+	SessionID string `json:"session_id"`
 }
 
-// ChatHandler 是处理聊天请求的 Gin 处理器。
-// 它依赖于数据库 (db) 来查找角色设定，并依赖 AI 服务 (aiService) 来生成回复。
+// ChatHandler 负责处理聊天请求、管理会话历史和调用 AI 服务。
 func ChatHandler(db *gorm.DB, aiService services.AIService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req ChatRequest
@@ -31,9 +33,15 @@ func ChatHandler(db *gorm.DB, aiService services.AIService) gin.HandlerFunc {
 			return
 		}
 
-		// --- A. 从数据库加载角色设定 ---
+		// --- A. 确定会话 ID (Session Management) ---
+		sessionID := req.SessionID
+		if sessionID == "" {
+			// 如果 SessionID 为空，生成一个新的 UUID 作为会话 ID
+			sessionID = uuid.New().String()
+		}
+
+		// --- B. 从数据库加载角色设定 ---
 		var character models.Character
-		// 根据 CharacterID 查询数据库
 		if err := db.First(&character, req.CharacterID).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				c.JSON(http.StatusNotFound, gin.H{"error": "Character not found"})
@@ -44,20 +52,39 @@ func ChatHandler(db *gorm.DB, aiService services.AIService) gin.HandlerFunc {
 			return
 		}
 
-		// --- B. 构造聊天历史 (简化版) ---
-		// 由于我们还没有实现步骤 3.1 (历史记录持久化)，此处只包含用户当前的输入。
-		chatHistory := []services.Message{
-			{
-				Role:    openai.ChatMessageRoleUser, // 使用 OpenAI SDK 的常量，因为它与七牛云兼容
-				Content: req.NewMessage,
-			},
+		// --- C. 加载历史聊天记录 ---
+		var chatRecords []models.ChatRecord
+		// 按创建时间升序排列，以便按正确的顺序构造历史记录
+		db.Where("session_id = ? AND character_id = ?", sessionID, req.CharacterID).
+			Order("created_at asc").
+			Find(&chatRecords) // 即使没有记录，这里也不会报错，chatRecords 为空
+
+		// --- D. 构造 LLM 消息历史 ---
+		// 1. 包含历史记录
+		chatHistory := make([]services.Message, 0, len(chatRecords)*2+1) // 预估容量
+		for _, record := range chatRecords {
+			// 历史记录中的每一条 ChatRecord 包含用户和 AI 的两条消息
+			chatHistory = append(chatHistory, services.Message{
+				Role:    openai.ChatMessageRoleUser,
+				Content: record.UserMessage,
+			})
+			chatHistory = append(chatHistory, services.Message{
+				Role:    openai.ChatMessageRoleAssistant,
+				Content: record.AIMessage,
+			})
 		}
 
-		// --- C. 调用 AI 服务 (已修复参数问题) ---
+		// 2. 添加用户当前的新消息
+		chatHistory = append(chatHistory, services.Message{
+			Role:    openai.ChatMessageRoleUser,
+			Content: req.NewMessage,
+		})
+
+		// --- E. 调用 AI 服务 ---
 		response, err := aiService.Chat(
 			c.Request.Context(),
-			character.SystemPrompt, // 第一个新参数：System Prompt
-			chatHistory,            // 第二个新参数：聊天历史
+			character.SystemPrompt,
+			chatHistory, // 传递完整的历史记录
 		)
 
 		if err != nil {
@@ -66,7 +93,24 @@ func ChatHandler(db *gorm.DB, aiService services.AIService) gin.HandlerFunc {
 			return
 		}
 
-		// --- D. 返回结果 ---
-		c.JSON(http.StatusOK, gin.H{"response": response})
+		// --- F. 保存新的聊天记录 (持久化) ---
+		newRecord := models.ChatRecord{
+			CharacterID: req.CharacterID,
+			SessionID:   sessionID,
+			UserMessage: req.NewMessage,
+			AIMessage:   response,
+			// GORM 会自动填充 CreatedAt, UpdatedAt
+		}
+
+		if err := db.Create(&newRecord).Error; err != nil {
+			log.Printf("Database error saving chat record: %v", err)
+			// 记录失败不影响用户体验，只需打印日志
+		}
+
+		// --- G. 返回结果 ---
+		c.JSON(http.StatusOK, gin.H{
+			"session_id": sessionID, // 确保返回 SessionID，供前端下次使用
+			"response":   response,
+		})
 	}
 }
