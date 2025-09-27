@@ -9,25 +9,164 @@
   }
   
   body {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    overflow: hidden;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  /* 深色主题 */
+  html.dark body {
+    @apply bg-gray-900 text-white;
+  }
+
+  /* 白色主题 */
+  html.light body {
     @apply bg-gray-50 text-gray-900;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
   .btn-secondary {
-    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+    @apply font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+
+  /* 深色主题按钮 */
+  html.dark .btn-secondary {
+    @apply bg-gray-700 hover:bg-gray-600 text-white;
+  }
+
+  /* 白色主题按钮 */
+  html.light .btn-secondary {
+    @apply bg-gray-200 hover:bg-gray-300 text-gray-800;
   }
   
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6;
+    @apply rounded-xl shadow-sm p-6 transition-colors duration-200;
+  }
+
+  /* 深色主题卡片 */
+  html.dark .card {
+    @apply bg-gray-800 border border-gray-700;
+  }
+
+  /* 白色主题卡片 */
+  html.light .card {
+    @apply bg-white border border-gray-200;
   }
   
   .input {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+    @apply w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200;
+  }
+
+  /* 深色主题输入框 */
+  html.dark .input {
+    @apply bg-gray-700 border border-gray-600 text-white placeholder-gray-400;
+  }
+
+  /* 白色主题输入框 */
+  html.light .input {
+    @apply bg-white border border-gray-300 text-gray-900 placeholder-gray-500;
+  }
+  
+  .sidebar {
+    @apply border-r h-full transition-colors duration-200;
+  }
+
+  /* 深色主题侧边栏 */
+  html.dark .sidebar {
+    @apply bg-gray-800 border-gray-700;
+  }
+
+  /* 白色主题侧边栏 */
+  html.light .sidebar {
+    @apply bg-white border-gray-200;
+  }
+  
+  .chat-area {
+    @apply h-full flex flex-col transition-colors duration-200;
+  }
+
+  /* 深色主题聊天区域 */
+  html.dark .chat-area {
+    @apply bg-gray-900;
+  }
+
+  /* 白色主题聊天区域 */
+  html.light .chat-area {
+    @apply bg-gray-50;
+  }
+  
+  .message-bubble-user {
+    @apply bg-purple-600 text-white rounded-2xl rounded-br-md px-4 py-3 max-w-xs ml-auto;
+  }
+  
+  .message-bubble-ai {
+    @apply rounded-2xl rounded-bl-md px-4 py-3 max-w-xs transition-colors duration-200;
+  }
+
+  /* 深色主题AI消息气泡 */
+  html.dark .message-bubble-ai {
+    @apply bg-gray-700 text-white;
+  }
+
+  /* 白色主题AI消息气泡 */
+  html.light .message-bubble-ai {
+    @apply bg-white text-gray-900 border border-gray-200;
+  }
+  
+  .role-item {
+    @apply flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors duration-200;
+  }
+
+  /* 深色主题角色项 */
+  html.dark .role-item {
+    @apply hover:bg-gray-700;
+  }
+
+  /* 白色主题角色项 */
+  html.light .role-item {
+    @apply hover:bg-gray-100;
+  }
+  
+  .role-item-selected {
+    @apply border-l-4 border-purple-500 transition-colors duration-200;
+  }
+
+  /* 深色主题选中角色项 */
+  html.dark .role-item-selected {
+    @apply bg-gray-700;
+  }
+
+  /* 白色主题选中角色项 */
+  html.light .role-item-selected {
+    @apply bg-gray-100;
+  }
+
+  /* 隐藏滚动条 */
+  .hide-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+  }
+
+  /* 输入框样式优化 */
+  .chat-input {
+    @apply overflow-hidden;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .chat-input::-webkit-scrollbar {
+    display: none;
   }
 }
 

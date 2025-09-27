@@ -1,24 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { Brain, RefreshCw, AlertCircle, MessageSquare, Mic } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Plus } from 'lucide-react';
 import ErrorBoundary from './components/ErrorBoundary';
 import RoleSelector from './components/RoleSelector';
-import VoiceCallInterface from './components/VoiceCallInterface';
 import TextChatInterface from './components/TextChatInterface';
-import CallStatus from './components/CallStatus';
 import LoadingSpinner from './components/LoadingSpinner';
+import ThemeToggle from './components/ThemeToggle';
 import { useRoles } from './hooks/useRoles';
-import { useVoiceCall } from './hooks/useVoiceCall';
 import { useTextChat } from './hooks/useTextChat';
 import type { Role } from './types';
 
-type ChatMode = 'voice' | 'text';
-
 const App: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
-  const [callDuration, setCallDuration] = useState(0);
-  const [chatMode, setChatMode] = useState<ChatMode>('text');
+  const [searchTerm, setSearchTerm] = useState('');
   const { roles, loading: rolesLoading, error: rolesError, refetch: refetchRoles } = useRoles();
-  const { callState, endCall } = useVoiceCall();
   const { 
     messages, 
     isLoading: textChatLoading, 
@@ -29,45 +23,19 @@ const App: React.FC = () => {
     clearMessages 
   } = useTextChat();
 
-  // 通话时长计时器
-  useEffect(() => {
-    let interval: number;
-    
-    if (callState === 'connected') {
-      interval = setInterval(() => {
-        setCallDuration(prev => prev + 1);
-      }, 1000);
-    } else {
-      setCallDuration(0);
-    }
-
-    return () => {
-      if (interval) {
-        clearInterval(interval);
-      }
-    };
-  }, [callState]);
+  // 过滤角色
+  const filteredRoles = roles.filter(role => 
+    role.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    role.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   // 处理角色选择
   const handleRoleSelect = (role: Role) => {
-    // 如果正在通话中，先结束通话
-    if (callState === 'connected' || callState === 'connecting') {
-      endCall();
-    }
     setSelectedRole(role);
     // 加载该角色的聊天历史
     if (role) {
       loadHistory(role.ID);
     }
-  };
-
-  // 处理聊天模式切换
-  const handleChatModeChange = (mode: ChatMode) => {
-    // 如果正在语音通话中，先结束通话
-    if (mode === 'text' && (callState === 'connected' || callState === 'connecting')) {
-      endCall();
-    }
-    setChatMode(mode);
   };
 
   // 处理文字消息发送
@@ -91,126 +59,79 @@ const App: React.FC = () => {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gray-50">
-        {/* 头部 */}
-        <header className="bg-white shadow-sm border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-purple-600 rounded-lg flex items-center justify-center">
-                  <Brain className="w-5 h-5 text-white" />
-                </div>
-                <h1 className="text-xl font-bold text-gray-900">AI 角色扮演聊天</h1>
+      <div className="flex h-screen">
+        {/* 左侧边栏 */}
+        <div className="w-80 sidebar flex flex-col">
+          {/* 头部 */}
+          <div className="p-6 border-b transition-colors duration-200 dark:border-gray-700 light:border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold transition-colors duration-200 dark:text-white light:text-gray-900 mb-2">Vox AI</h1>
+                <p className="text-sm transition-colors duration-200 dark:text-gray-400 light:text-gray-600">与AI角色畅聊</p>
               </div>
-              
-              <div className="flex items-center gap-2">
-                {/* 聊天模式切换 */}
-                <div className="flex bg-gray-100 rounded-lg p-1">
-                  <button
-                    onClick={() => handleChatModeChange('text')}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                      chatMode === 'text'
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                    文字对话
-                  </button>
-                  <button
-                    onClick={() => handleChatModeChange('voice')}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                      chatMode === 'voice'
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    <Mic className="w-4 h-4" />
-                    语音通话
-                  </button>
-                </div>
-                
-                {rolesError && (
-                  <button
-                    onClick={handleRetry}
-                    className="btn-secondary flex items-center gap-2"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    重试
-                  </button>
-                )}
-              </div>
+              <ThemeToggle />
             </div>
           </div>
-        </header>
 
-        {/* 通话状态栏 - 仅在语音模式下显示 */}
-        {chatMode === 'voice' && (
-          <CallStatus
-            callState={callState}
+          {/* 搜索框 */}
+          <div className="p-4 border-b transition-colors duration-200 dark:border-gray-700 light:border-gray-200">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 transition-colors duration-200 dark:text-gray-400 light:text-gray-500" />
+              <input
+                type="text"
+                placeholder="搜索AI角色..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="input w-full pl-10 pr-4 py-2"
+              />
+            </div>
+          </div>
+
+          {/* 角色列表 */}
+          <div className="flex-1 overflow-y-auto hide-scrollbar p-4">
+            {rolesLoading ? (
+              <div className="flex items-center justify-center h-32">
+                <LoadingSpinner />
+              </div>
+            ) : rolesError ? (
+              <div className="text-center py-8">
+                <p className="text-red-400 mb-4">{rolesError}</p>
+                <button onClick={handleRetry} className="btn-secondary">
+                  重新加载
+                </button>
+              </div>
+            ) : (
+              <RoleSelector
+                roles={filteredRoles}
+                selectedRole={selectedRole}
+                onRoleSelect={handleRoleSelect}
+                loading={false}
+              />
+            )}
+          </div>
+
+          {/* 创建新角色 */}
+          <div className="p-4 border-t transition-colors duration-200 dark:border-gray-700 light:border-gray-200">
+            <h3 className="text-sm font-medium mb-3 transition-colors duration-200 dark:text-gray-400 light:text-gray-600">创建新角色</h3>
+            <button className="flex items-center gap-2 transition-colors duration-200 dark:text-gray-400 light:text-gray-600 dark:hover:text-white light:hover:text-gray-900">
+              <Plus className="w-4 h-4" />
+              <span className="text-sm">添加自定义角色</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 右侧聊天区域 */}
+        <div className="flex-1 chat-area">
+          <TextChatInterface
+            messages={messages}
             selectedRole={selectedRole}
-            isConnected={callState === 'connected'}
-            callDuration={callDuration}
+            isLoading={textChatLoading}
+            error={textChatError}
+            onSendMessage={handleTextMessageSend}
+            onClearMessages={clearMessages}
+            onRetry={handleTextChatRetry}
           />
-        )}
-
-        {/* 主要内容 */}
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* 左侧：角色选择 */}
-            <div>
-              {rolesError ? (
-                <div className="card">
-                  <div className="text-center py-8">
-                    <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">加载失败</h3>
-                    <p className="text-gray-600 mb-4">{rolesError}</p>
-                    <button onClick={handleRetry} className="btn-primary">
-                      重新加载
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <RoleSelector
-                  roles={roles}
-                  selectedRole={selectedRole}
-                  onRoleSelect={handleRoleSelect}
-                  loading={rolesLoading}
-                />
-              )}
-            </div>
-
-            {/* 右侧：聊天界面 */}
-            <div>
-              {chatMode === 'text' ? (
-                <TextChatInterface
-                  messages={messages}
-                  selectedRole={selectedRole}
-                  isLoading={textChatLoading}
-                  error={textChatError}
-                  onSendMessage={handleTextMessageSend}
-                  onClearMessages={clearMessages}
-                  onRetry={handleTextChatRetry}
-                />
-              ) : (
-                <VoiceCallInterface
-                  selectedRole={selectedRole}
-                  disabled={rolesLoading}
-                />
-              )}
-            </div>
-          </div>
-        </main>
-
-        {/* 全局加载状态 */}
-        {rolesLoading && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 flex items-center gap-3">
-              <LoadingSpinner size="lg" />
-              <span className="text-lg">正在加载角色列表...</span>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
     </ErrorBoundary>
   );
