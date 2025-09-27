@@ -16,6 +16,7 @@ type AIService interface {
 	Chat(ctx context.Context, characterPrompt string, chatHistory []Message) (string, error)
 
 	// Transcribe 将音频文件转录为文本
-	// audioFilePath: 本地临时音频文件的路径
-	Transcribe(ctx context.Context, audioFilePath string) (string, error)
+	// audioUrl: 音频文件的公网 URL
+	// audioFormat: 音频文件的格式 (如 "mp3")
+	Transcribe(ctx context.Context, audioUrl string, audioFormat string) (string, error)
 }

@@ -43,6 +43,9 @@ func setupRouter(ctx *AppContext) *gin.Engine {
 
 		// **核心：注册聊天 Handler**
 		api.POST("/chat", handlers.ChatHandler(ctx.DB, ctx.AIService))
+
+		// **注册 ASR 转录 Handler**
+		api.POST("/transcribe", handlers.TranscribeHandler(ctx.AIService))
 	}
 
 	return r
@@ -72,9 +75,6 @@ func main() {
 
 	// 3. 获取七牛云 LLM 密钥
 	llmKey := os.Getenv("QINIU_LLM_KEY")
-	// 暂时为 ASR 预留空值，后续实现 ASR 时再读取
-	asrKey := os.Getenv("QINIU_ASR_KEY")
-	asrUrl := os.Getenv("QINIU_ASR_URL")
 
 	if llmKey == "" {
 		log.Fatal("FATAL: QINIU_LLM_KEY environment variable is not set. Please set it.")
@@ -82,7 +82,7 @@ func main() {
 
 	// 4. 初始化七牛云 AI 服务
 	// 注意：现在只需要 LLM Key
-	qiniuAIService := services.NewQiniuCloudService(llmKey, asrKey, asrUrl)
+	qiniuAIService := services.NewQiniuCloudService(llmKey)
 
 	// 5. 创建 AppContext 并设置依赖
 	appContext := &AppContext{
