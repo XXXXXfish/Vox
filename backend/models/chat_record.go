@@ -9,14 +9,19 @@ import (
 // ChatRecord 结构体定义了聊天记录的表结构
 type ChatRecord struct {
 	gorm.Model
-	// CharacterID 关联的角色ID
-	CharacterID uint `gorm:"not null;index" json:"character_id"`
-	// UserMessage 用户的文本输入
+
+	// **【关键修改】移除 SessionID 字段**
+	// SessionID   string `gorm:"index"` // <-- 移除
+
+	UserID      uint `gorm:"not null;index:idx_user_char_ts"` // 关联的用户 ID
+	CharacterID uint `gorm:"not null;index:idx_user_char_ts"` // 角色 ID
+
 	UserMessage string `gorm:"type:text;not null" json:"user_message"`
-	// AIMessage AI 的文本回复
-	AIMessage string `gorm:"type:text;not null" json:"ai_message"`
-	// SessionID 用于将多轮对话归类到同一个会话中（更高级的用法，暂用时间戳/简单ID替代）
-	SessionID string `gorm:"type:varchar(50);index" json:"session_id"`
+	AIMessage   string `gorm:"type:text;not null" json:"ai_message"`
+
+	// 增加一个复合索引，提高查询性能
+	// idx_user_char_ts: 按照 (UserID, CharacterID, CreatedAt) 排序
+
 	// Character 关联到 Character 模型
 	Character Character `gorm:"foreignKey:CharacterID"`
 }

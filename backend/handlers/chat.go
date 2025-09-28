@@ -3,7 +3,6 @@
 package handlers
 
 import (
-	// ... (确保导入了 log, net/http, time, uuid) ...
 	"log"
 	"net/http"
 
@@ -11,17 +10,15 @@ import (
 	"vox-backend/services"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid" // 用于生成唯一的 SessionID
 	openai "github.com/sashabaranov/go-openai"
 	"gorm.io/gorm"
 )
 
 // ChatRequest 定义了聊天请求的 JSON 结构
 type ChatRequest struct {
+	// UserID 字段被移除，现在从 JWT Token 中获取
 	CharacterID uint   `json:"character_id" binding:"required"`
 	NewMessage  string `json:"new_message" binding:"required"`
-	// 新增：会话ID。如果为空，则表示开始新会话。
-	SessionID string `json:"session_id"`
 }
 
 // ChatHandler 负责处理聊天请求、管理会话历史和调用 AI 服务。
@@ -33,16 +30,18 @@ func ChatHandler(db *gorm.DB, aiService services.AIService) gin.HandlerFunc {
 			return
 		}
 
-		// --- A. 确定会话 ID (Session Management) ---
-		sessionID := req.SessionID
-		if sessionID == "" {
-			// 如果 SessionID 为空，生成一个新的 UUID 作为会话 ID
-			sessionID = uuid.New().String()
+		// **【关键修改】从 Context 获取 UserID**
+		rawUserID, exists := c.Get("userID")
+		if !exists {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "User context not found"}) // 不应发生
+			return
 		}
+		userID := rawUserID.(uint) // 类型断言为 uint
+		charID := req.CharacterID
 
 		// --- B. 从数据库加载角色设定 ---
 		var character models.Character
-		if err := db.First(&character, req.CharacterID).Error; err != nil {
+		if err := db.First(&character, charID).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				c.JSON(http.StatusNotFound, gin.H{"error": "Character not found"})
 				return
@@ -52,10 +51,10 @@ func ChatHandler(db *gorm.DB, aiService services.AIService) gin.HandlerFunc {
 			return
 		}
 
-		// --- C. 加载历史聊天记录 ---
+		// --- C. 从数据库加载历史聊天记录 (使用 UserID 和 CharacterID 组合查询) ---
 		var chatRecords []models.ChatRecord
-		// 按创建时间升序排列，以便按正确的顺序构造历史记录
-		db.Where("session_id = ? AND character_id = ?", sessionID, req.CharacterID).
+		// 查询条件变为：WHERE user_id = ? AND character_id = ?
+		db.Where("user_id = ? AND character_id = ?", userID, charID).
 			Order("created_at asc").
 			Find(&chatRecords) // 即使没有记录，这里也不会报错，chatRecords 为空
 
@@ -95,8 +94,8 @@ func ChatHandler(db *gorm.DB, aiService services.AIService) gin.HandlerFunc {
 
 		// --- F. 保存新的聊天记录 (持久化) ---
 		newRecord := models.ChatRecord{
-			CharacterID: req.CharacterID,
-			SessionID:   sessionID,
+			CharacterID: charID,
+			UserID:      userID, // 确保保存 UserID
 			UserMessage: req.NewMessage,
 			AIMessage:   response,
 			// GORM 会自动填充 CreatedAt, UpdatedAt
@@ -109,8 +108,8 @@ func ChatHandler(db *gorm.DB, aiService services.AIService) gin.HandlerFunc {
 
 		// --- G. 返回结果 ---
 		c.JSON(http.StatusOK, gin.H{
-			"session_id": sessionID, // 确保返回 SessionID，供前端下次使用
-			"response":   response,
+			// **【关键修改】不再返回 SessionID**
+			"response": response,
 		})
 	}
 }

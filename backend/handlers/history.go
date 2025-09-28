@@ -19,23 +19,31 @@ type HistoryResponseItem struct {
 	Timestamp   int64  `json:"timestamp"` // 使用 Unix 时间戳方便前端处理
 }
 
-// GetChatHistoryHandler 处理 GET /api/v1/history/:session_id 请求
+// GetChatHistoryHandler 处理 GET /api/v1/history/:character_id 请求
 func GetChatHistoryHandler(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 1. 从 URL 路径获取 SessionID
-		sessionID := c.Param("session_id")
-		if sessionID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Session ID is required."})
+		// 1. 从 Context 获取 UserID
+		rawUserID, exists := c.Get("userID")
+		if !exists {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "User context not found"}) // 不应发生
+			return
+		}
+		userID := rawUserID.(uint) // 类型断言为 uint
+
+		// 2. 从 URL 路径获取 CharacterID
+		characterIDStr := c.Param("character_id")
+		if characterIDStr == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Character ID is required."})
 			return
 		}
 
 		var chatRecords []models.ChatRecord
 
-		// 2. 从数据库查询：
-		// - 筛选条件：SessionID 匹配
+		// 3. 从数据库查询：
+		// - 筛选条件：UserID 和 CharacterID 匹配
 		// - 排序：按创建时间升序排列，确保对话顺序正确
-		if err := db.Where("session_id = ?", sessionID).Order("created_at asc").Find(&chatRecords).Error; err != nil {
-			log.Printf("Database error fetching history for session %s: %v", sessionID, err)
+		if err := db.Where("user_id = ? AND character_id = ?", userID, characterIDStr).Order("created_at asc").Find(&chatRecords).Error; err != nil {
+			log.Printf("Database error fetching history for user %d, character %s: %v", userID, characterIDStr, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch chat history"})
 			return
 		}

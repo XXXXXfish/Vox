@@ -12,15 +12,14 @@ import (
 	"vox-backend/services"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	openai "github.com/sashabaranov/go-openai"
 	"gorm.io/gorm"
 )
 
 // VoiceChatRequest 定义了语音聊天请求的 JSON 结构
 type VoiceChatRequest struct {
-	CharacterID uint   `json:"character_id" binding:"required"`
-	SessionID   string `json:"session_id"` // 会话ID
+	CharacterID uint `json:"character_id" binding:"required"`
+	// UserID 字段被移除，现在从 JWT Token 中获取
 
 	// ASR 输入参数
 	AudioUrl    string `json:"audio_url" binding:"required"`    // 前端上传的音频公网 URL
@@ -32,7 +31,6 @@ type VoiceChatRequest struct {
 
 // VoiceChatResponse 定义了返回给前端的结构
 type VoiceChatResponse struct {
-	SessionID       string `json:"session_id"`
 	TranscribedText string `json:"transcribed_text"` // 用户的原始文本
 	AITextResponse  string `json:"ai_text_response"` // AI的文本回复
 	// Note: 语音数据将作为原始二进制流返回，不包含在 JSON 结构中
@@ -59,22 +57,25 @@ func VoiceChatHandler(db *gorm.DB, aiService services.AIService) gin.HandlerFunc
 		}
 		log.Printf("ASR SUCCESS: Transcribed text: %s", transcribedText)
 
-		// --- B. 确定会话 ID (Session Management) ---
-		sessionID := req.SessionID
-		if sessionID == "" {
-			sessionID = uuid.New().String()
+		// --- B. 从 Context 获取 UserID ---
+		rawUserID, exists := c.Get("userID")
+		if !exists {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "User context not found"}) // 不应发生
+			return
 		}
+		userID := rawUserID.(uint) // 类型断言为 uint
+		charID := req.CharacterID
 
 		// --- C. 准备 LLM 输入 (加载历史 + 构造消息) ---
 		var character models.Character
-		if err := db.First(&character, req.CharacterID).Error; err != nil {
+		if err := db.First(&character, charID).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Character not found"})
 			return
 		}
 
-		// 加载历史记录 (逻辑与 ChatHandler 相同)
+		// 加载历史记录 (使用 UserID 和 CharacterID)
 		var chatRecords []models.ChatRecord
-		db.Where("session_id = ? AND character_id = ?", sessionID, req.CharacterID).
+		db.Where("user_id = ? AND character_id = ?", userID, charID).
 			Order("created_at asc").
 			Find(&chatRecords)
 
@@ -96,8 +97,8 @@ func VoiceChatHandler(db *gorm.DB, aiService services.AIService) gin.HandlerFunc
 
 		// --- E. 保存新的聊天记录 (持久化) ---
 		newRecord := models.ChatRecord{
-			CharacterID: req.CharacterID,
-			SessionID:   sessionID,
+			CharacterID: charID,
+			UserID:      userID, // 确保保存 UserID
 			UserMessage: transcribedText,
 			AIMessage:   aiTextResponse,
 		}
@@ -131,7 +132,6 @@ func VoiceChatHandler(db *gorm.DB, aiService services.AIService) gin.HandlerFunc
 		// 1. 设置文本数据 Header (供前端调试或显示)
 		c.Header("X-Transcribed-Text", transcribedText)
 		c.Header("X-AI-Text-Response", aiTextResponse)
-		c.Header("X-Session-ID", sessionID)
 
 		// 2. 返回音频流
 		c.Data(http.StatusOK, "audio/mpeg", audioData)

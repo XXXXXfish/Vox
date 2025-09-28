@@ -38,8 +38,9 @@ func InitDB(dsn string) (*gorm.DB, error) {
 	return db, nil
 }
 
-// seedTestData 插入一些测试角色数据
+// seedTestData 插入一些测试角色数据和测试用户
 func seedTestData(db *gorm.DB) {
+	// 1. 创建测试角色
 	characters := []models.Character{
 		{
 			Name:         "哈利·波特",
@@ -59,6 +60,23 @@ func seedTestData(db *gorm.DB) {
 		if db.Where("name = ?", char.Name).First(&existingChar).Error == gorm.ErrRecordNotFound {
 			db.Create(&char)
 			log.Printf("Seeding character: %s", char.Name)
+		}
+	}
+
+	// 2. 创建测试用户
+	testUser := models.User{Username: "testuser"}
+	if err := testUser.SetPassword("password123"); err != nil {
+		log.Printf("Error setting password for test user: %v", err)
+		return
+	}
+
+	// 检查用户是否存在，如果不存在则创建
+	var existingUser models.User
+	if db.Where("username = ?", "testuser").First(&existingUser).Error == gorm.ErrRecordNotFound {
+		if err := db.Create(&testUser).Error; err != nil {
+			log.Printf("Error creating test user: %v", err)
+		} else {
+			log.Printf("Seeding test user: testuser")
 		}
 	}
 }
