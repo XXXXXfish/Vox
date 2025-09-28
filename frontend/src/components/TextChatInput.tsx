@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Smile, Paperclip, Mic, Square } from 'lucide-react';
-import { sendTranscribeMessage } from '../services/api';
+// 移除不再使用的导入
+// import { sendTranscribeMessage } from '../services/api';
 import { MessageOutlined } from '@ant-design/icons';
 import type { Role } from '../types';
 
 interface TextChatInputProps {
   onSendMessage: (message: string) => void;
+  onAIResponse?: (message: string) => void; // 新增：处理AI回复的回调
   isLoading: boolean;
   disabled?: boolean;
   placeholder?: string;
@@ -14,6 +16,7 @@ interface TextChatInputProps {
 
 const TextChatInput: React.FC<TextChatInputProps> = ({
   onSendMessage,
+  onAIResponse,
   isLoading,
   disabled = false,
   placeholder = "输入消息...",
@@ -72,25 +75,57 @@ const TextChatInput: React.FC<TextChatInputProps> = ({
       });
       
       audioChunksRef.current = [];
-      mediaRecorderRef.current = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
+      // 尝试不同的音频格式，找到浏览器支持的
+      let mimeType = 'audio/webm;codecs=opus';
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/webm';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = 'audio/mp4';
+          if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = ''; // 使用默认格式
+          }
+        }
+      }
+      
+      console.log('使用录音格式:', mimeType);
+      
+      mediaRecorderRef.current = new MediaRecorder(stream, mimeType ? { mimeType } : {});
       
       mediaRecorderRef.current.ondataavailable = (event) => {
+        console.log('录音数据片段:', event.data.size, 'bytes');
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
       
       mediaRecorderRef.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        console.log('录音停止，数据片段数量:', audioChunksRef.current.length);
+        const totalSize = audioChunksRef.current.reduce((sum, chunk) => sum + chunk.size, 0);
+        console.log('总录音数据大小:', totalSize, 'bytes');
+        
+        if (audioChunksRef.current.length === 0 || totalSize === 0) {
+          alert('录音数据为空，请重新录制');
+          return;
+        }
+        
+        // 使用录音时的mime类型创建Blob
+        const audioBlob = new Blob(audioChunksRef.current, { 
+          type: mimeType || 'audio/webm' 
+        });
+        
+        console.log('创建的音频Blob:', {
+          size: audioBlob.size,
+          type: audioBlob.type
+        });
+        
         await handleVoiceMessage(audioBlob);
         
         // 清理资源
         stream.getTracks().forEach(track => track.stop());
       };
       
-      mediaRecorderRef.current.start();
+      // 每1秒收集一次数据，确保能获取到音频数据
+      mediaRecorderRef.current.start(1000);
       setIsRecording(true);
       
     } catch (error) {
@@ -117,18 +152,94 @@ const TextChatInput: React.FC<TextChatInputProps> = ({
     try {
       setIsSendingVoice(true);
       
-      // 将 Blob 转换为 File
-      const audioFile = new File([audioBlob], 'voice_message.webm', {
-        type: 'audio/webm'
+      // 检查录音数据
+      console.log('录音 Blob 信息:', {
+        size: audioBlob.size,
+        type: audioBlob.type
       });
       
-      // 调用 transcribe API，直接发送语音文件
-      const response = await sendTranscribeMessage(selectedRole.ID.toString(), audioFile);
+      if (audioBlob.size === 0) {
+        throw new Error('录音数据为空，请重新录制');
+      }
       
-      // 处理后端响应（可能包含AI的回复）
-      if (response.ai_response_text) {
-        // 如果后端直接返回AI回复，可以在这里处理
-        console.log('AI回复:', response.ai_response_text);
+      // 将 Blob 转换为 File，确保有正确的文件名和类型
+      const timestamp = Date.now();
+      const fileName = `voice_message_${timestamp}.webm`;
+      const audioFile = new File([audioBlob], fileName, {
+        type: audioBlob.type || 'audio/webm'
+      });
+      
+      console.log('转换后的 File 信息:', {
+        name: audioFile.name,
+        size: audioFile.size,
+        type: audioFile.type
+      });
+      
+      // // 可选：保存到本地（用于调试）
+      // if (window.confirm('是否要先下载录音文件到本地？')) {
+      //   const url = URL.createObjectURL(audioBlob);
+      //   const a = document.createElement('a');
+      //   a.href = url;
+      //   a.download = fileName;
+      //   document.body.appendChild(a);
+      //   a.click();
+      //   document.body.removeChild(a);
+      //   URL.revokeObjectURL(url);
+      // }
+      
+      // 使用新的语音处理流程
+      const { processVoiceMessage } = await import('../services/api');
+      const response = await processVoiceMessage(
+        audioFile, 
+        parseInt(selectedRole.ID), 
+        'qiniu_zh_female_tmjxxy'
+      );
+      
+      console.log('语音处理响应:', {
+        transcribed_text: response.transcribed_text,
+        ai_text_response: response.ai_text_response,
+        audio_base64_length: response.audio_base64?.length || 0
+      });
+      
+      // 处理返回的数据
+      if (response.transcribed_text) {
+        // 显示用户的语音转文字结果
+        console.log('用户说:', response.transcribed_text);
+        // 可以添加到聊天界面显示用户的语音消息
+        onSendMessage(`🎤 ${response.transcribed_text}`);
+      }
+      
+      if (response.ai_text_response) {
+        console.log('AI回复:', response.ai_text_response);
+        // 通过回调函数将AI的文字回复添加到聊天界面
+        if (onAIResponse) {
+          onAIResponse(response.ai_text_response);
+        }
+      }
+      
+      // 处理返回的Base64音频数据并播放
+      if (response.audio_base64) {
+        try {
+          // 将Base64数据转换为音频URL
+          const audioData = `data:audio/mp3;base64,${response.audio_base64}`;
+          const audio = new Audio(audioData);
+          
+          // 播放AI回复的语音
+          await audio.play();
+          console.log('AI语音回复播放成功');
+          
+          // 播放完成后的处理
+          audio.addEventListener('ended', () => {
+            console.log('音频播放完成');
+          });
+          
+        } catch (playError) {
+          console.error('音频播放失败:', playError);
+          const errorMessage = playError instanceof Error ? playError.message : '未知错误';
+          alert('AI回复音频播放失败: ' + errorMessage);
+        }
+      } else {
+        console.warn('没有收到音频数据');
       }
       
     } catch (error) {

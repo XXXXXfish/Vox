@@ -11,6 +11,7 @@ interface TextChatInterfaceProps {
   isLoading: boolean;
   error: string | null;
   onSendMessage: (message: string) => void;
+  onAIResponse?: (message: string) => void; // 新增：处理AI回复的回调
   onClearMessages: () => void;
   onRetry: () => void;
 }
@@ -21,6 +22,7 @@ const TextChatInterface: React.FC<TextChatInterfaceProps> = ({
   isLoading,
   error,
   onSendMessage,
+  onAIResponse,
   onClearMessages,
   onRetry
 }) => {
@@ -156,6 +158,7 @@ const TextChatInterface: React.FC<TextChatInterfaceProps> = ({
       {/* 输入框 */}
       <TextChatInput
         onSendMessage={onSendMessage}
+        onAIResponse={onAIResponse}
         isLoading={isLoading}
         // disabled={!!error}
         disabled={false}

@@ -84,6 +84,33 @@ export interface AuthContextType {
   error: string | null;
 }
 
+// 上传凭证相关类型
+export interface UploadTokenResponse {
+  upload_token: string;
+  up_host: string;
+  bucket_domain: string;
+}
+
+// 七牛云上传响应类型
+export interface QiniuUploadResponse {
+  hash: string; // 目标资源的hash值，可用于 ETag 头部
+  key: string;  // 目标资源的最终名字，可由七牛云存储自动命名
+}
+
+// 语音聊天相关类型
+export interface VoiceChatRequest {
+  character_id: number;
+  audio_url: string;
+  audio_format: string;
+  voice_id: string;
+}
+
+export interface VoiceChatResponse {
+  transcribed_text: string; // 转录的用户语音文本
+  ai_text_response: string; // AI的文本回复
+  audio_base64: string; // Base64 编码的音频数据
+}
+
 // 语音通话配置
 export interface VoiceCallConfig {
   sampleRate: number;

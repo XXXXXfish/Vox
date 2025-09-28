@@ -69,6 +69,14 @@ const AppContent: React.FC = () => {
     }
   };
 
+  // 处理AI回复消息
+  const handleAIResponse = (message: string) => {
+    // 暂时通过控制台输出AI回复，后续可以集成到消息系统中
+    console.log('AI回复消息:', message);
+    // TODO: 可以在这里调用一个函数将AI回复添加到聊天记录中
+    // 例如：addAIMessage(message, selectedRole.ID);
+  };
+
   // 处理错误重试
   const handleRetry = () => {
     if (rolesError) {
@@ -244,6 +252,7 @@ const AppContent: React.FC = () => {
             isLoading={textChatLoading}
             error={textChatError}
             onSendMessage={handleTextMessageSend}
+            onAIResponse={handleAIResponse}
             onClearMessages={handleClearMessages}
             onRetry={handleTextChatRetry}
           />
