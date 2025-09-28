@@ -7,6 +7,117 @@ Vox 是一个基于 AI 的语音角色扮演平台，用户可以与虚拟角色
 
 ## 如何运行程序
 
+
+-----
+
+## 启动项目总结：环境配置与运行指南
+
+### 1\. 软件和环境准备（本地环境）
+
+| 软件/环境 | 说明 | 下载/配置 |
+| :--- | :--- | :--- |
+| **Go 语言** | 核心开发环境，版本 $\ge 1.18$。 | 官网下载安装，配置环境变量。 |
+| **Node.js** | 核心开发环境，版本 $\ge 16.x$。 | 官网下载安装。 |
+| **PostgreSQL** | 项目使用 PostgreSQL 作为关系型数据库。 | 官网或使用 Docker 下载安装。 |
+| **数据库管理工具** | 可选，但强烈推荐，用于查看数据和调试。 | 推荐 **DBeaver** 或 **pgAdmin**。 |
+-----
+
+### 2\. 云服务密钥配置
+
+你需要获取并配置项目的关键凭证。请在项目根目录创建或修改 **`.env`** 文件，填入以下所有配置项。
+
+#### `.env` 文件示例
+
+```dotenv
+# --- 核心环境配置 ---
+SERVER_PORT=8080
+JWT_SECRET=super-secure-jwt-secret-key-that-should-be-long-and-random
+# 数据库连接：请替换为你的 PostgreSQL 连接信息
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=your_postgres_user
+DB_PASSWORD=your_postgres_password
+DB_NAME=vox_backend_db
+
+# --- 七牛云 AI (LLM/ASR/TTS) 配置 ---
+# LLM/TTS/ASR 统一鉴权密钥 (sk- 开头)
+QINIU_LLM_KEY="你的七牛云 AI API KEY" 
+# Qiniu AI 接口的 Base URL (通常固定)
+QINIU_OPENAI_BASE_URL="https://openai.qiniu.com/v1"
+
+# --- 七牛云对象存储 (Kodo) 配置 ---
+# Kodo 存储密钥
+QINIU_KODO_ACCESS_KEY="igjtA6_tXQ0DVY26ke7Uze2DdFXvwJSyVK3gECJq"
+QINIU_KODO_SECRET_KEY="xfD7T9W2FBl1Gud-fE7W2Pk3z1CPpt9MMTFOVrSy"
+# 存储空间名称 (Bucket Name)
+QINIU_KODO_BUCKET_NAME="vox"
+# 存储空间的公网访问域名
+QINIU_KODO_DOMAIN="t397zbzw3.hd-bkt.clouddn.com"
+```
+
+-----
+
+### 3\. 数据库和数据初始化
+
+在启动服务之前，你需要确保数据库已经就绪。
+
+1.  **启动 PostgreSQL 服务**：确保 PostgreSQL 实例正在运行。
+2.  **创建数据库**：使用你的数据库管理工具（或命令行），创建一个新的数据库，名称与 `.env` 中的 `DB_NAME` 匹配（例如 `vox_backend_db`）。
+3.  **服务启动**：当运行 `go run main.go` 时，`main.go` 中的 `AutoMigrate` 会自动创建 `users`, `characters`, `chat_records` 等表结构，并执行初始化角色数据。
+
+-----
+
+### 4\. 后端的启动
+
+完成上述配置后，你就可以启动后端服务了。
+
+#### 步骤 1：下载依赖
+
+在项目根目录执行：
+
+```bash
+cd .\backend\
+go mod tidy
+```
+
+#### 步骤 2：启动服务
+
+```bash
+go run main.go
+```
+
+如果一切配置正确，你将看到类似 **`Server is running on :8080`** 的输出。
+
+
+### 5\. 前端的启动
+
+完成上述配置后，你就可以启动前端服务了。
+
+#### 步骤 1：下载依赖
+
+在项目根目录执行：
+
+```bash
+cd .\frontend\
+```
+
+```bash
+npm install
+```
+
+#### 步骤 2：启动服务
+
+在项目根目录执行：
+
+```bash
+npm run dev
+```
+
+如果一切配置正确，你将看到类似 **`Server is running on :3000`** 的输出。
+
+
+
+
 ### 1. 环境要求
 - **操作系统**: Windows / macOS / Linux
 - **开发语言**: Go (后端), TypeScript + React (前端)
@@ -14,7 +125,7 @@ Vox 是一个基于 AI 的语音角色扮演平台，用户可以与虚拟角色
   - Node.js (>= 16.x)
   - pnpm (>= 7.x)
   - Go (>= 1.18)
-  - 数据库: MySQL
+  - 数据库: 
 
 ### 2. 配置环境变量
 在项目根目录下创建 `.env` 文件，配置以下内容：
