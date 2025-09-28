@@ -131,3 +131,40 @@ func GetCharacterListHandler(db *gorm.DB) gin.HandlerFunc {
 		})
 	}
 }
+
+// UpdateVoiceRequest 定义了更新音色所需的参数
+type UpdateVoiceRequest struct {
+	VoiceID string `json:"voice_id" binding:"required"`
+}
+
+// UpdateCharacterVoiceHandler 处理 PATCH /api/v1/characters/:id/voice 请求
+func UpdateCharacterVoiceHandler(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// 1. 获取 URL 中的角色 ID
+		characterID := c.Param("id")
+		var req UpdateVoiceRequest
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload: voice_id is required."})
+			return
+		}
+
+		// 2. 检查角色是否存在
+		var character models.Character
+		if result := db.First(&character, characterID); result.Error != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Character not found."})
+			return
+		}
+
+		// 3. TODO: 这里需要增加权限检查 (例如：只有 CreatorID 匹配当前用户或角色为公共时才能修改)
+		// 暂且省略，专注于功能实现
+
+		// 4. 更新 VoiceID 字段
+		if err := db.Model(&character).Update("voice_id", req.VoiceID).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update character voice ID."})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Character voice ID updated successfully.", "character_id": character.ID, "new_voice_id": req.VoiceID})
+	}
+}

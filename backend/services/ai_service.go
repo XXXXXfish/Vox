@@ -23,4 +23,6 @@ type AIService interface {
 	// text: 需要合成的文本
 	// voiceId: 音色模型 ID (例如 male-01, female-02)
 	TextToSpeech(ctx context.Context, text string, voiceId string) ([]byte, error)
+	// **【新增方法】解决编译报错的关键**
+	GetVoiceList() ([]VoiceInfo, error)
 }

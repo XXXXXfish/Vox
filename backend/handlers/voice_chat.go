@@ -40,7 +40,7 @@ type VoiceChatResponse struct {
 // VoiceChatHandler 处理端到端语音聊天请求
 func VoiceChatHandler(db *gorm.DB, aiService services.AIService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req VoiceChatRequest
+		var req VoiceChatRequest // 使用新的、不包含 voice_id 的请求结构
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload: " + err.Error()})
 			return
@@ -108,12 +108,23 @@ func VoiceChatHandler(db *gorm.DB, aiService services.AIService) gin.HandlerFunc
 		}
 
 		// --- F. 语音合成 (TTS) ---
-		voiceId := req.VoiceId
-		if voiceId == "" {
-			voiceId = "qiniu_zh_female_tmjxxy" // 默认音色
+		// 1. **加载角色信息**
+		if result := db.First(&character, req.CharacterID); result.Error != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Character not found."})
+			return
 		}
 
-		audioData, err := aiService.TextToSpeech(ctx, aiTextResponse, voiceId)
+		// 2. **获取最终音色 ID**
+		finalVoiceID := character.VoiceID
+
+		// 3. **Fallback 检查：强制使用角色音色，如果未设置则使用默认**
+		if finalVoiceID == "" {
+			// 这是硬编码的默认音色，用于防止角色创建者忘记设置音色
+			finalVoiceID = "qiniu_zh_female_tmjxxy"
+			log.Printf("角色 %d 未设置 VoiceID，使用默认音色: %s", character.ID, finalVoiceID)
+		}
+
+		audioData, err := aiService.TextToSpeech(ctx, aiTextResponse, finalVoiceID)
 		if err != nil {
 			log.Printf("TTS error: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "TTS failed: " + err.Error()})

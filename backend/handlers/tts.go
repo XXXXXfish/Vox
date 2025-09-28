@@ -17,6 +17,20 @@ type TTSRequest struct {
 	VoiceId string `json:"voice_id"`                // 可选：音色 ID (如果为空，服务层应使用默认音色)
 }
 
+// GetVoiceListHandler 供前端获取所有可用音色列表
+func GetVoiceListHandler(aiService services.AIService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		voiceList, err := aiService.GetVoiceList()
+		if err != nil {
+			log.Printf("调用七牛云获取音色列表失败: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve voice list from upstream service."})
+			return
+		}
+
+		c.JSON(http.StatusOK, voiceList)
+	}
+}
+
 // TTSHandler 处理 POST /api/v1/tts 请求
 func TTSHandler(aiService services.AIService) gin.HandlerFunc {
 	return func(c *gin.Context) {

@@ -44,7 +44,7 @@ func setupRouter(ctx *AppContext) *gin.Engine {
 	// config.AllowOrigins = []string{"http://10.19.196.225:你的前端端口"}
 
 	// 允许的 HTTP 方法和 Header (默认配置通常足够，但保险起见可以列出)
-	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
+	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"}
 	config.AllowHeaders = []string{"Origin", "Content-Type", "Authorization", "X-Session-ID"} // 确保允许我们自定义的 Header
 
 	// 将配置应用到路由
@@ -102,6 +102,12 @@ func setupRouter(ctx *AppContext) *gin.Engine {
 			ctx.KodoBucket,
 			ctx.KodoDomain,
 		))
+
+		// 【新增】更新角色音色接口
+		api.PATCH("/characters/:id/voice", handlers.UpdateCharacterVoiceHandler(ctx.DB))
+
+		// **【新增】获取音色列表接口**
+		api.GET("/tts/voices", handlers.GetVoiceListHandler(ctx.AIService))
 	}
 
 	return r
