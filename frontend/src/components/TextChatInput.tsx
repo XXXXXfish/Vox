@@ -7,7 +7,8 @@ import type { Role } from '../types';
 
 interface TextChatInputProps {
   onSendMessage: (message: string) => void;
-  onAIResponse?: (message: string) => void; // 新增：处理AI回复的回调
+  onAIResponse?: (message: string) => void; // 处理AI回复的回调
+  onVoiceMessage?: (userMessage: string, aiMessage: string) => void; // 新增：处理语音消息的回调
   isLoading: boolean;
   disabled?: boolean;
   placeholder?: string;
@@ -17,6 +18,7 @@ interface TextChatInputProps {
 const TextChatInput: React.FC<TextChatInputProps> = ({
   onSendMessage,
   onAIResponse,
+  onVoiceMessage,
   isLoading,
   disabled = false,
   placeholder = "输入消息...",
@@ -29,6 +31,7 @@ const TextChatInput: React.FC<TextChatInputProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // 自动调整文本框高度
   useEffect(() => {
@@ -37,6 +40,34 @@ const TextChatInput: React.FC<TextChatInputProps> = ({
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
   }, [message]);
+
+  // 监听角色切换，停止当前播放的音频
+  useEffect(() => {
+    return () => {
+      // 组件卸载或角色切换时停止音频播放
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.currentTime = 0;
+        currentAudioRef.current = null;
+      }
+    };
+  }, [selectedRole]);
+
+  // 组件卸载时清理资源
+  useEffect(() => {
+    return () => {
+      // 停止录音
+      if (mediaRecorderRef.current && isRecording) {
+        mediaRecorderRef.current.stop();
+      }
+      
+      // 停止音频播放
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        currentAudioRef.current = null;
+      }
+    };
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -202,17 +233,20 @@ const TextChatInput: React.FC<TextChatInputProps> = ({
       });
       
       // 处理返回的数据
-      if (response.transcribed_text) {
-        // 显示用户的语音转文字结果
-        console.log('用户说:', response.transcribed_text);
-        // 可以添加到聊天界面显示用户的语音消息
-        onSendMessage(`🎤 ${response.transcribed_text}`);
-      }
+      console.log('用户说:', response.transcribed_text);
+      console.log('AI回复:', response.ai_text_response);
       
-      if (response.ai_text_response) {
-        console.log('AI回复:', response.ai_text_response);
-        // 通过回调函数将AI的文字回复添加到聊天界面
-        if (onAIResponse) {
+      // 使用语音消息回调处理用户消息和AI回复
+      if (onVoiceMessage && response.transcribed_text && response.ai_text_response) {
+        // 一次性处理用户语音消息和AI回复
+        onVoiceMessage(response.transcribed_text, response.ai_text_response);
+      } else {
+        // 兼容旧的处理方式
+        if (response.transcribed_text) {
+          onSendMessage(`🎤 ${response.transcribed_text}`);
+        }
+        
+        if (response.ai_text_response && onAIResponse) {
           onAIResponse(response.ai_text_response);
         }
       }
@@ -220,9 +254,18 @@ const TextChatInput: React.FC<TextChatInputProps> = ({
       // 处理返回的Base64音频数据并播放
       if (response.audio_base64) {
         try {
+          // 停止之前播放的音频
+          if (currentAudioRef.current) {
+            currentAudioRef.current.pause();
+            currentAudioRef.current.currentTime = 0;
+          }
+          
           // 将Base64数据转换为音频URL
           const audioData = `data:audio/mp3;base64,${response.audio_base64}`;
           const audio = new Audio(audioData);
+          
+          // 保存当前音频引用
+          currentAudioRef.current = audio;
           
           // 播放AI回复的语音
           await audio.play();
@@ -231,12 +274,27 @@ const TextChatInput: React.FC<TextChatInputProps> = ({
           // 播放完成后的处理
           audio.addEventListener('ended', () => {
             console.log('音频播放完成');
+            // 清除当前音频引用
+            if (currentAudioRef.current === audio) {
+              currentAudioRef.current = null;
+            }
+          });
+          
+          // 播放错误处理
+          audio.addEventListener('error', () => {
+            console.error('音频播放出错');
+            // 清除当前音频引用
+            if (currentAudioRef.current === audio) {
+              currentAudioRef.current = null;
+            }
           });
           
         } catch (playError) {
           console.error('音频播放失败:', playError);
           const errorMessage = playError instanceof Error ? playError.message : '未知错误';
           alert('AI回复音频播放失败: ' + errorMessage);
+          // 清除当前音频引用
+          currentAudioRef.current = null;
         }
       } else {
         console.warn('没有收到音频数据');

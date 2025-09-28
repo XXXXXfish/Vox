@@ -30,6 +30,7 @@ const AppContent: React.FC = () => {
     isLoading: textChatLoading, 
     error: textChatError, 
     sendTextMessage, 
+    addDirectMessage,
     loadConversation, 
     clearError: clearTextChatError,
     clearMessages 
@@ -71,10 +72,51 @@ const AppContent: React.FC = () => {
 
   // 处理AI回复消息
   const handleAIResponse = (message: string) => {
-    // 暂时通过控制台输出AI回复，后续可以集成到消息系统中
-    console.log('AI回复消息:', message);
-    // TODO: 可以在这里调用一个函数将AI回复添加到聊天记录中
-    // 例如：addAIMessage(message, selectedRole.ID);
+    if (selectedRole) {
+      // 创建AI消息对象
+      const aiMessage: import('./types').ChatMessage = {
+        id: `ai-${Date.now()}`,
+        speaker: 'ai',
+        text: message,
+        timestamp: Date.now(),
+        session_id: 'voice-session' // 语音消息使用特殊的session ID
+      };
+      
+      // 直接添加AI回复到聊天记录中
+      addDirectMessage(aiMessage, selectedRole.ID);
+      console.log('AI回复已添加到聊天记录:', message);
+    }
+  };
+
+  // 处理语音消息（用户语音转文字 + AI回复）
+  const handleVoiceMessage = (userMessage: string, aiMessage: string) => {
+    if (selectedRole) {
+      const timestamp = Date.now();
+      
+      // 创建用户语音消息
+      const userVoiceMessage: import('./types').ChatMessage = {
+        id: `user-voice-${timestamp}`,
+        speaker: 'user',
+        text: `🎤 ${userMessage}`,
+        timestamp: timestamp,
+        session_id: 'voice-session'
+      };
+      
+      // 创建AI回复消息
+      const aiReplyMessage: import('./types').ChatMessage = {
+        id: `ai-voice-${timestamp}`,
+        speaker: 'ai',
+        text: aiMessage,
+        timestamp: timestamp + 1, // 确保AI消息在用户消息之后
+        session_id: 'voice-session'
+      };
+      
+      // 添加用户消息和AI回复到聊天记录
+      addDirectMessage(userVoiceMessage, selectedRole.ID);
+      addDirectMessage(aiReplyMessage, selectedRole.ID);
+      
+      console.log('语音对话已添加到聊天记录:', { userMessage, aiMessage });
+    }
   };
 
   // 处理错误重试
@@ -253,6 +295,7 @@ const AppContent: React.FC = () => {
             error={textChatError}
             onSendMessage={handleTextMessageSend}
             onAIResponse={handleAIResponse}
+            onVoiceMessage={handleVoiceMessage}
             onClearMessages={handleClearMessages}
             onRetry={handleTextChatRetry}
           />
