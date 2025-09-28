@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Search, Plus, LogOut, User } from 'lucide-react';
+import { Search, LogOut, User, Plus } from 'lucide-react';
 import { Layout } from 'antd';
 import ErrorBoundary from './components/ErrorBoundary';
 import RoleSelector from './components/RoleSelector';
@@ -7,6 +7,7 @@ import TextChatInterface from './components/TextChatInterface';
 import LoadingSpinner from './components/LoadingSpinner';
 import ThemeToggle from './components/ThemeToggle';
 import AuthPage from './components/AuthPage';
+import CreateCharacterModal from './components/CreateCharacterModal';
 import { ConversationProvider } from './contexts/ConversationContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useRoles } from './hooks/useRoles';
@@ -21,6 +22,7 @@ const AppContent: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sidebarWidth, setSidebarWidth] = useState(320); // 默认宽度
   const [isResizing, setIsResizing] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
   const { user, logout } = useAuth();
@@ -124,6 +126,22 @@ const AppContent: React.FC = () => {
     if (rolesError) {
       refetchRoles();
     }
+  };
+
+  // 处理创建角色
+  const handleCreateCharacter = () => {
+    setIsCreateModalOpen(true);
+  };
+
+  // 处理创建角色成功
+  const handleCharacterCreated = () => {
+    // 刷新角色列表
+    refetchRoles();
+  };
+
+  // 关闭创建角色模态框
+  const handleCloseCreateModal = () => {
+    setIsCreateModalOpen(false);
   };
 
   // 处理拖动开始
@@ -266,7 +284,10 @@ const AppContent: React.FC = () => {
             {/* 创建新角色 */}
             <div className="p-4 border-t transition-colors duration-200 dark:border-gray-700 light:border-gray-200">
               <h3 className="text-sm font-medium mb-3 transition-colors duration-200 dark:text-gray-400 light:text-gray-600">创建新角色</h3>
-              <button className="flex items-center gap-2 transition-colors duration-200 dark:text-gray-400 light:text-gray-600 dark:hover:text-white light:hover:text-gray-900">
+              <button 
+                onClick={handleCreateCharacter}
+                className="flex items-center gap-2 transition-colors duration-200 dark:text-gray-400 light:text-gray-600 dark:hover:text-white light:hover:text-gray-900 dark:hover:bg-gray-700 light:hover:bg-gray-100 rounded-lg p-2 w-full"
+              >
                 <Plus className="w-4 h-4" />
                 <span className="text-sm">添加自定义角色</span>
               </button>
@@ -301,6 +322,13 @@ const AppContent: React.FC = () => {
           />
         </Content>
       </Layout>
+
+      {/* 创建角色模态框 */}
+      <CreateCharacterModal
+        isOpen={isCreateModalOpen}
+        onClose={handleCloseCreateModal}
+        onCharacterCreated={handleCharacterCreated}
+      />
     </ErrorBoundary>
   );
 };

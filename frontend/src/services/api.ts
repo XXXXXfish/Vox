@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Role, ChatResponse, HistoryResponse, LoginResponse, RegisterResponse, UploadTokenResponse, QiniuUploadResponse, VoiceChatRequest, VoiceChatResponse } from '../types';
+import type { Role, ChatResponse, HistoryResponse, LoginResponse, RegisterResponse, UploadTokenResponse, QiniuUploadResponse, VoiceChatRequest, VoiceChatResponse, Voice, UpdateVoiceResponse, CreateCharacterRequest, CreateCharacterResponse } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -477,6 +477,45 @@ export const processVoiceMessage = async (
     return chatResult;
   } catch (error) {
     console.error('语音消息处理失败:', error);
+    throw error;
+  }
+};
+
+// 获取所有音色列表
+export const fetchVoices = async (): Promise<Voice[]> => {
+  try {
+    const response = await api.get<Voice[]>('/api/v1/tts/voices');
+    return response.data;
+  } catch (error) {
+    console.error('获取音色列表失败:', error);
+    throw error;
+  }
+};
+
+// 更新角色音色
+export const updateCharacterVoice = async (
+  characterId: string,
+  voiceId: string
+): Promise<UpdateVoiceResponse> => {
+  try {
+    const response = await api.patch<UpdateVoiceResponse>(
+      `/api/v1/characters/${characterId}/voice`,
+      { voice_id: voiceId }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('更新角色音色失败:', error);
+    throw error;
+  }
+};
+
+// 创建新角色
+export const createCharacter = async (characterData: CreateCharacterRequest): Promise<CreateCharacterResponse> => {
+  try {
+    const response = await api.post<CreateCharacterResponse>('/api/v1/characters', characterData);
+    return response.data;
+  } catch (error) {
+    console.error('创建角色失败:', error);
     throw error;
   }
 };

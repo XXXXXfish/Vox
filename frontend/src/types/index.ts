@@ -4,6 +4,7 @@ export interface Role {
   name: string;
   avatar_url: string;
   description: string;
+  voice_id?: string; // 当前使用的音色ID
 }
 
 // 聊天消息类型
@@ -118,4 +119,32 @@ export interface VoiceCallConfig {
   echoCancellation: boolean;
   noiseSuppression: boolean;
   autoGainControl: boolean;
+}
+
+// 音色相关类型
+export interface Voice {
+  voice_name: string;
+  voice_type: string; // 音色ID
+  url: string;
+  category: string;
+}
+
+export interface UpdateVoiceRequest {
+  voice_id: string;
+}
+
+export interface UpdateVoiceResponse {
+  new_voice_id: string;
+}
+
+// 创建角色相关类型
+export interface CreateCharacterRequest {
+  name: string;
+  system_prompt: string;
+  description?: string;
+}
+
+export interface CreateCharacterResponse {
+  message: string;
+  character_id: number;
 }

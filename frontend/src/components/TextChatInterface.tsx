@@ -1,8 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { DeleteOutlined, PhoneOutlined } from '@ant-design/icons';
-import { MessageSquare, Loader2, AlertCircle } from 'lucide-react';
+import { MessageSquare, Loader2, AlertCircle, Volume2 } from 'lucide-react';
 import ChatMessage from './ChatMessage';
 import TextChatInput from './TextChatInput';
+import VoiceSelectionModal from './VoiceSelectionModal';
 import type { ChatMessage as ChatMessageType, Role } from '../types';
 
 interface TextChatInterfaceProps {
@@ -29,11 +30,26 @@ const TextChatInterface: React.FC<TextChatInterfaceProps> = ({
   onRetry
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
+  const [currentVoiceId, setCurrentVoiceId] = useState<string>('');
 
   // 自动滚动到底部
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
+
+  // 初始化当前音色ID
+  useEffect(() => {
+    if (selectedRole?.voice_id) {
+      setCurrentVoiceId(selectedRole.voice_id);
+    }
+  }, [selectedRole]);
+
+  // 处理音色更新
+  const handleVoiceUpdated = (newVoiceId: string) => {
+    setCurrentVoiceId(newVoiceId);
+    console.log(`角色 ${selectedRole?.name} 的音色已更新为: ${newVoiceId}`);
+  };
 
   if (!selectedRole) {
     return (
@@ -73,6 +89,15 @@ const TextChatInterface: React.FC<TextChatInterfaceProps> = ({
         </div>
         
         <div className="flex items-center gap-2">
+          {/* 音色设置按钮 */}
+          <button
+            onClick={() => setShowVoiceModal(true)}
+            className="p-2 transition-colors duration-200 dark:text-gray-400 light:text-gray-600 dark:hover:text-white light:hover:text-gray-900 dark:hover:bg-gray-700 light:hover:bg-gray-100 rounded-md"
+            title="设置音色"
+          >
+            <Volume2 className="w-4 h-4" />
+          </button>
+          
           {messages && messages.length > 0 && (
             <button
               onClick={onClearMessages}
@@ -168,6 +193,17 @@ const TextChatInterface: React.FC<TextChatInterfaceProps> = ({
         placeholder={`输入消息...`}
         selectedRole={selectedRole}
       />
+
+      {/* 音色选择模态框 */}
+      {selectedRole && (
+        <VoiceSelectionModal
+          isOpen={showVoiceModal}
+          onClose={() => setShowVoiceModal(false)}
+          selectedRole={selectedRole}
+          currentVoiceId={currentVoiceId}
+          onVoiceUpdated={handleVoiceUpdated}
+        />
+      )}
     </div>
   );
 };
