@@ -9,25 +9,175 @@
   }
   
   body {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    overflow: hidden;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  /* 深色主题 */
+  html.dark body {
+    @apply bg-gray-900 text-white;
+  }
+
+  /* 白色主题 */
+  html.light body {
     @apply bg-gray-50 text-gray-900;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
   .btn-secondary {
-    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+    @apply font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+
+  /* 深色主题按钮 */
+  html.dark .btn-secondary {
+    @apply bg-gray-700 hover:bg-gray-600 text-white;
+  }
+
+  /* 白色主题按钮 */
+  html.light .btn-secondary {
+    @apply bg-gray-200 hover:bg-gray-300 text-gray-800;
   }
   
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6;
+    @apply rounded-xl shadow-sm p-6 transition-colors duration-200;
+  }
+
+  /* 深色主题卡片 */
+  html.dark .card {
+    @apply bg-gray-800 border border-gray-700;
+  }
+
+  /* 白色主题卡片 */
+  html.light .card {
+    @apply bg-white border border-gray-200;
   }
   
   .input {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+    @apply w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors duration-200;
+  }
+
+  /* 深色主题输入框 */
+  html.dark .input {
+    @apply bg-gray-700 border border-gray-600 text-white placeholder-gray-400;
+  }
+
+  /* 白色主题输入框 */
+  html.light .input {
+    @apply bg-white border border-gray-300 text-gray-900 placeholder-gray-500;
+  }
+  
+  .sidebar {
+    @apply border-r h-full transition-colors duration-200;
+  }
+
+  /* 深色主题侧边栏 */
+  html.dark .sidebar {
+    @apply bg-gray-800 border-gray-700;
+    background-color: #1f2937 !important;
+  }
+
+  /* 白色主题侧边栏 */
+  html.light .sidebar {
+    @apply bg-white border-gray-200;
+    background-color: #ffffff !important;
+  }
+  
+  .chat-area {
+    @apply h-full flex flex-col transition-colors duration-200;
+  }
+
+  /* 深色主题聊天区域 */
+  html.dark .chat-area {
+    @apply bg-gray-900;
+    background-color: #111827 !important;
+  }
+
+  /* 白色主题聊天区域 */
+  html.light .chat-area {
+    @apply bg-gray-50;
+    background-color: #f9fafb !important;
+  }
+  
+  .message-bubble-user {
+    @apply bg-purple-600 text-white rounded-2xl rounded-br-md px-4 py-3 max-w-xs ml-auto;
+    background-color: #9333ea !important;
+    color: #ffffff !important;
+  }
+  
+  .message-bubble-ai {
+    @apply rounded-2xl rounded-bl-md px-4 py-3 max-w-xs transition-colors duration-200;
+  }
+
+  /* 深色主题AI消息气泡 */
+  html.dark .message-bubble-ai {
+    @apply bg-gray-700 text-white;
+    background-color: #374151 !important;
+    color: #ffffff !important;
+  }
+
+  /* 白色主题AI消息气泡 */
+  html.light .message-bubble-ai {
+    @apply bg-white text-gray-900 border border-gray-200;
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    border-color: #e5e7eb !important;
+  }
+  
+  .role-item {
+    @apply flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors duration-200;
+  }
+
+  /* 深色主题角色项 */
+  html.dark .role-item {
+    @apply hover:bg-gray-700;
+  }
+
+  /* 白色主题角色项 */
+  html.light .role-item {
+    @apply hover:bg-gray-100;
+  }
+  
+  .role-item-selected {
+    @apply border-l-4 border-purple-500 transition-colors duration-200;
+  }
+
+  /* 深色主题选中角色项 */
+  html.dark .role-item-selected {
+    @apply bg-gray-700;
+  }
+
+  /* 白色主题选中角色项 */
+  html.light .role-item-selected {
+    @apply bg-gray-100;
+  }
+
+  /* 隐藏滚动条 */
+  .hide-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+  }
+
+  /* 输入框样式优化 */
+  .chat-input {
+    @apply overflow-hidden;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .chat-input::-webkit-scrollbar {
+    display: none;
   }
 }
 
@@ -64,4 +214,69 @@
 
 .animate-pulse-dot {
   animation: pulse-dot 1.25s cubic-bezier(0.455, 0.03, 0.515, 0.955) -0.4s infinite;
+}
+
+/* 拖动手柄样式 */
+.resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+  background: transparent;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.resize-handle:hover {
+  background: #3b82f6;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+}
+
+.resize-handle.resizing {
+  background: #3b82f6;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+}
+
+/* 添加侧边栏的过渡效果 */
+.ant-layout-sider {
+  transition: width 0.2s ease !important;
+}
+
+/* 确保内容区域的适配 */
+.ant-layout-content {
+  transition: margin-left 0.2s ease !important;
+}
+
+/* 强制聊天区域文字颜色适配主题 */
+html.dark .chat-area {
+  color: #f3f4f6 !important;
+}
+
+html.light .chat-area {
+  color: #111827 !important;
+}
+
+/* 强制聊天区域内所有文字元素的颜色 */
+html.dark .chat-area p,
+html.dark .chat-area h1,
+html.dark .chat-area h2,
+html.dark .chat-area h3,
+html.dark .chat-area h4,
+html.dark .chat-area h5,
+html.dark .chat-area h6,
+html.dark .chat-area span:not(.text-purple-400):not(.text-red-300):not(.text-red-400) {
+  color: #f3f4f6 !important;
+}
+
+html.light .chat-area p,
+html.light .chat-area h1,
+html.light .chat-area h2,
+html.light .chat-area h3,
+html.light .chat-area h4,
+html.light .chat-area h5,
+html.light .chat-area h6,
+html.light .chat-area span:not(.text-purple-400):not(.text-red-700):not(.text-red-600) {
+  color: #111827 !important;
 }
