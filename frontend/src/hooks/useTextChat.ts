@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { sendTextMessage, fetchChatHistory } from '../services/api';
+import { sendTextMessage } from '../services/api';
+import { useConversationContext } from '../contexts/ConversationContext';
 import type { ChatMessage, Role, ChatResponse } from '../types';
 
 interface UseTextChatReturn {
@@ -8,9 +9,9 @@ interface UseTextChatReturn {
   error: string | null;
   sessionId: string | null;
   sendTextMessage: (message: string, role: Role) => Promise<void>;
-  loadHistory: (roleId: string) => Promise<void>;
+  loadConversation: (roleId: string) => void;
   clearError: () => void;
-  clearMessages: () => void;
+  clearMessages: (roleId: string) => void;
 }
 
 export const useTextChat = (): UseTextChatReturn => {
@@ -18,6 +19,7 @@ export const useTextChat = (): UseTextChatReturn => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const { getConversation, addMessage, clearConversation, setSessionId: setContextSessionId } = useConversationContext();
 
   const sendTextMessageHandler = useCallback(async (message: string, role: Role) => {
     try {
@@ -33,7 +35,12 @@ export const useTextChat = (): UseTextChatReturn => {
         session_id: sessionId || 'new-session'
       };
 
-      setMessages((prev: ChatMessage[]) => [...prev, userMessage]);
+      // 添加到全局状态和本地显示
+      addMessage(role.ID, userMessage);
+      setMessages((prev: ChatMessage[]) => {
+        const prevArray = Array.isArray(prev) ? prev : [];
+        return [...prevArray, userMessage];
+      });
 
       // 发送文字消息到后端
       const response: ChatResponse = await sendTextMessage(
@@ -44,60 +51,63 @@ export const useTextChat = (): UseTextChatReturn => {
       // 更新会话ID
       if (response.session_id) {
         setSessionId(response.session_id);
+        setContextSessionId(role.ID, response.session_id);
       }
 
       // 添加AI回复消息
       const aiMessage: ChatMessage = {
         id: `ai-${Date.now()}`,
         speaker: 'ai',
-        text: response.ai_response_text,
+        text: response.response || response.ai_response_text || '',
         audio_url: response.ai_audio_url,
         timestamp: Date.now(),
         session_id: response.session_id
       };
 
-      setMessages((prev: ChatMessage[]) => [...prev, aiMessage]);
+      // 添加到全局状态和本地显示
+      addMessage(role.ID, aiMessage);
+      setMessages((prev: ChatMessage[]) => {
+        const prevArray = Array.isArray(prev) ? prev : [];
+        return [...prevArray, aiMessage];
+      });
 
     } catch (err) {
       console.error('发送文字消息失败:', err);
       setError(err instanceof Error ? err.message : '发送消息失败');
-      
-      // 移除用户消息
-      setMessages((prev: ChatMessage[]) => prev.filter((msg: ChatMessage) => msg.speaker !== 'user' || msg.text !== message));
     } finally {
       setIsLoading(false);
     }
-  }, [sessionId]);
+  }, [sessionId, addMessage, setContextSessionId]);
 
-  const loadHistory = useCallback(async (roleId: string) => {
+  const loadConversation = useCallback((roleId: string) => {
     try {
-      setIsLoading(true);
       setError(null);
       
-      const history = await fetchChatHistory(roleId);
-      setMessages(history);
+      // 从全局状态获取对话记录
+      const conversation = getConversation(roleId);
+      setMessages(conversation.messages);
       
-      // 从历史消息中获取最新的会话ID
-      if (history.length > 0) {
-        const latestMessage = history[history.length - 1];
-        setSessionId(latestMessage.session_id);
+      // 设置会话ID
+      if (conversation.sessionId) {
+        setSessionId(conversation.sessionId);
       }
     } catch (err) {
-      console.error('加载历史记录失败:', err);
-      setError(err instanceof Error ? err.message : '加载历史记录失败');
-    } finally {
-      setIsLoading(false);
+      console.error('加载对话记录失败:', err);
+      setError(err instanceof Error ? err.message : '加载对话记录失败');
     }
-  }, []);
+  }, [getConversation]);
 
   const clearError = useCallback(() => {
     setError(null);
   }, []);
 
-  const clearMessages = useCallback(() => {
+  const clearMessages = useCallback((roleId: string) => {
+    // 清空全局状态中的对话记录
+    clearConversation(roleId);
+    // 清空本地显示
     setMessages([]);
     setSessionId(null);
-  }, []);
+  }, [clearConversation]);
 
   return {
     messages,
@@ -105,7 +115,7 @@ export const useTextChat = (): UseTextChatReturn => {
     error,
     sessionId,
     sendTextMessage: sendTextMessageHandler,
-    loadHistory,
+    loadConversation,
     clearError,
     clearMessages,
   };

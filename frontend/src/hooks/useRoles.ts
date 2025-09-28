@@ -20,7 +20,7 @@ export const useRoles = (): UseRolesReturn => {
       setError(null);
       
       const rolesData = await fetchRoles();
-      setRoles(rolesData);
+      setRoles(rolesData.data);
     } catch (err) {
       console.error('加载角色列表失败:', err);
       setError(err instanceof Error ? err.message : '加载角色列表失败');

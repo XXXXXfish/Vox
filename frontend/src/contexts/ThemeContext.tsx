@@ -16,9 +16,9 @@ interface ThemeProviderProps {
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>(() => {
-    // 从localStorage读取保存的主题，默认为深色主题
+    // 从localStorage读取保存的主题，默认为浅色主题
     const savedTheme = localStorage.getItem('vox-theme') as Theme;
-    return savedTheme || 'dark';
+    return savedTheme || 'light';
   });
 
   // 当主题改变时保存到localStorage

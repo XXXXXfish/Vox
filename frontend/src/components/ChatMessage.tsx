@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Bot, Play, Pause, Volume2, Loader2, Mic } from 'lucide-react';
+import { User, Bot, Play, Pause, Loader2, Mic } from 'lucide-react';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import type { ChatMessage as ChatMessageType } from '../types';
 
@@ -44,11 +44,11 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, roleAvatar }) => {
     <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
       {/* AI消息显示头像 */}
       {!isUser && (
-        <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+        <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-colors duration-200 dark:bg-gray-700 light:bg-gray-200">
           {roleAvatar ? (
             <img src={roleAvatar} alt="角色头像" className="w-full h-full object-cover rounded-full" />
           ) : (
-            <Bot className="w-5 h-5 text-gray-300" />
+            <Bot className="w-5 h-5 transition-colors duration-200 dark:text-gray-300 light:text-gray-600" />
           )}
         </div>
       )}
@@ -65,15 +65,15 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, roleAvatar }) => {
           {/* 语音消息显示 */}
           {hasAudio && (
             <div className="flex items-center gap-2 mt-2">
-              <Mic className="w-4 h-4 text-gray-400" />
-              <span className="text-xs text-gray-400">
+              <Mic className="w-4 h-4 transition-colors duration-200 dark:text-gray-400 light:text-gray-500" />
+              <span className="text-xs transition-colors duration-200 dark:text-gray-400 light:text-gray-500">
                 {isUser ? '语音消息 · 15秒' : '语音回复 · 12秒'}
               </span>
               {!isUser && (
                 <button
                   onClick={handleAudioPlay}
                   disabled={isLoadingAudio}
-                  className="ml-2 p-1 hover:bg-gray-600 rounded transition-colors"
+                  className="ml-2 p-1 rounded transition-colors duration-200 dark:hover:bg-gray-600 light:hover:bg-gray-200"
                 >
                   {isLoadingAudio ? (
                     <Loader2 className="w-3 h-3 animate-spin text-purple-400" />
@@ -90,8 +90,8 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, roleAvatar }) => {
         
         {/* 时间戳 - 只在有文本消息时显示 */}
         {message.text && message.text.trim() && (
-          <span className="text-xs text-gray-500 mt-1 px-1">
-            {formatTime(message.timestamp)}
+          <span className="text-xs mt-1 px-1 transition-colors duration-200 dark:text-gray-500 light:text-gray-400">
+            {formatTime(message.timestamp || Date.now())}
           </span>
         )}
       </div>

@@ -9,10 +9,10 @@ export interface Role {
 // 聊天消息类型
 export interface ChatMessage {
   id: string;
-  speaker: 'user' | 'ai';
+  speaker?: 'user' | 'ai';
   text: string;
   audio_url?: string;
-  timestamp: number;
+  timestamp?: number;
   session_id: string;
 }
 
@@ -22,8 +22,9 @@ export interface RolesResponse {
 }
 
 export interface ChatResponse {
-  ai_response_text: string;
-  ai_audio_url: string;
+  ai_response_text?: string;
+  response?: string;
+  ai_audio_url?: string;
   session_id: string;
 }
 
@@ -45,6 +46,42 @@ export interface WebSocketMessage {
   type: 'audio' | 'text' | 'status' | 'error';
   data: any;
   timestamp: number;
+}
+
+// 用户认证类型
+export interface User {
+  id: number;
+  username: string;
+}
+
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  username: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  message: string;
+  token: string;
+}
+
+export interface RegisterResponse {
+  message: string;
+  user_id: number;
+}
+
+export interface AuthContextType {
+  user: User | null;
+  token: string | null;
+  login: (username: string, password: string) => Promise<void>;
+  register: (username: string, password: string) => Promise<void>;
+  logout: () => void;
+  isLoading: boolean;
+  error: string | null;
 }
 
 // 语音通话配置
