@@ -77,6 +77,9 @@ func setupRouter(ctx *AppContext) *gin.Engine {
 		// 注册角色列表 Handler
 		api.GET("/characters", handlers.GetCharacterListHandler(ctx.DB))
 
+		// **【新增】角色创建接口**
+		api.POST("/characters", handlers.CreateCharacterHandler(ctx.DB))
+
 		// **核心：注册聊天 Handler**
 		api.POST("/chat", handlers.ChatHandler(ctx.DB, ctx.AIService))
 

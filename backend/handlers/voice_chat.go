@@ -4,6 +4,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/base64"
 	"log"
 	"net/http"
 	"time"
@@ -31,9 +32,9 @@ type VoiceChatRequest struct {
 
 // VoiceChatResponse 定义了返回给前端的结构
 type VoiceChatResponse struct {
-	TranscribedText string `json:"transcribed_text"` // 用户的原始文本
-	AITextResponse  string `json:"ai_text_response"` // AI的文本回复
-	// Note: 语音数据将作为原始二进制流返回，不包含在 JSON 结构中
+	TranscribedText string `json:"transcribed_text"` // ASR 识别出的文本
+	AiTextResponse  string `json:"ai_text_response"` // LLM 的回复文本
+	AudioBase64     string `json:"audio_base64"`     // Base64 编码后的 MP3 数据
 }
 
 // VoiceChatHandler 处理端到端语音聊天请求
@@ -121,20 +122,17 @@ func VoiceChatHandler(db *gorm.DB, aiService services.AIService) gin.HandlerFunc
 		log.Println("TTS SUCCESS: Audio synthesized.")
 
 		// --- G. 最终响应 ---
-		// 由于 Gin 只能返回一个 Content-Type，我们必须选择返回语音数据，
-		// 而将文本数据通过 Header 或前端预期的 JSON 方式处理。
+		// 1. 进行 Base64 编码
+		audioBase64String := base64.StdEncoding.EncodeToString(audioData)
 
-		// 最佳实践：对于语音交互，通常是先返回一个 JSON 响应，然后前端请求音频流。
-		// 但为了简化，我们在这里直接返回音频流，并把文本数据通过 Header 传递（次优方案）。
+		// 2. 构造 JSON 响应体
+		response := VoiceChatResponse{
+			TranscribedText: transcribedText,
+			AiTextResponse:  aiTextResponse,
+			AudioBase64:     audioBase64String,
+		}
 
-		// 考虑到这个接口是 "Voice Chat"，我们优先返回音频流
-
-		// 1. 设置文本数据 Header (供前端调试或显示)
-		c.Header("X-Transcribed-Text", transcribedText)
-		c.Header("X-AI-Text-Response", aiTextResponse)
-
-		// 2. 返回音频流
-		c.Data(http.StatusOK, "audio/mpeg", audioData)
-		// Note: 前端接收到这个响应后，需要从 Header 读取文本，并将 body 作为音频播放。
+		// 3. 返回 JSON 响应 (状态码 200 OK，返回 Content-Type: application/json)
+		c.JSON(http.StatusOK, response)
 	}
 }
