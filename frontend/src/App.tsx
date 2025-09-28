@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Search, Plus, LogOut, User } from 'lucide-react';
+import { Search, LogOut, User, Plus } from 'lucide-react';
 import { Layout } from 'antd';
 import ErrorBoundary from './components/ErrorBoundary';
 import RoleSelector from './components/RoleSelector';
@@ -7,6 +7,7 @@ import TextChatInterface from './components/TextChatInterface';
 import LoadingSpinner from './components/LoadingSpinner';
 import ThemeToggle from './components/ThemeToggle';
 import AuthPage from './components/AuthPage';
+import CreateCharacterModal from './components/CreateCharacterModal';
 import { ConversationProvider } from './contexts/ConversationContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useRoles } from './hooks/useRoles';
@@ -21,6 +22,7 @@ const AppContent: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sidebarWidth, setSidebarWidth] = useState(320); // 默认宽度
   const [isResizing, setIsResizing] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
   const { user, logout } = useAuth();
@@ -30,6 +32,7 @@ const AppContent: React.FC = () => {
     isLoading: textChatLoading, 
     error: textChatError, 
     sendTextMessage, 
+    addDirectMessage,
     loadConversation, 
     clearError: clearTextChatError,
     clearMessages 
@@ -69,11 +72,76 @@ const AppContent: React.FC = () => {
     }
   };
 
+  // 处理AI回复消息
+  const handleAIResponse = (message: string) => {
+    if (selectedRole) {
+      // 创建AI消息对象
+      const aiMessage: import('./types').ChatMessage = {
+        id: `ai-${Date.now()}`,
+        speaker: 'ai',
+        text: message,
+        timestamp: Date.now(),
+        session_id: 'voice-session' // 语音消息使用特殊的session ID
+      };
+      
+      // 直接添加AI回复到聊天记录中
+      addDirectMessage(aiMessage, selectedRole.ID);
+      console.log('AI回复已添加到聊天记录:', message);
+    }
+  };
+
+  // 处理语音消息（用户语音转文字 + AI回复）
+  const handleVoiceMessage = (userMessage: string, aiMessage: string) => {
+    if (selectedRole) {
+      const timestamp = Date.now();
+      
+      // 创建用户语音消息
+      const userVoiceMessage: import('./types').ChatMessage = {
+        id: `user-voice-${timestamp}`,
+        speaker: 'user',
+        text: `🎤 ${userMessage}`,
+        timestamp: timestamp,
+        session_id: 'voice-session'
+      };
+      
+      // 创建AI回复消息
+      const aiReplyMessage: import('./types').ChatMessage = {
+        id: `ai-voice-${timestamp}`,
+        speaker: 'ai',
+        text: aiMessage,
+        timestamp: timestamp + 1, // 确保AI消息在用户消息之后
+        session_id: 'voice-session'
+      };
+      
+      // 添加用户消息和AI回复到聊天记录
+      addDirectMessage(userVoiceMessage, selectedRole.ID);
+      addDirectMessage(aiReplyMessage, selectedRole.ID);
+      
+      console.log('语音对话已添加到聊天记录:', { userMessage, aiMessage });
+    }
+  };
+
   // 处理错误重试
   const handleRetry = () => {
     if (rolesError) {
       refetchRoles();
     }
+  };
+
+  // 处理创建角色
+  const handleCreateCharacter = () => {
+    setIsCreateModalOpen(true);
+  };
+
+  // 处理创建角色成功
+  const handleCharacterCreated = () => {
+    // 刷新角色列表
+    refetchRoles();
+  };
+
+  // 关闭创建角色模态框
+  const handleCloseCreateModal = () => {
+    setIsCreateModalOpen(false);
   };
 
   // 处理拖动开始
@@ -216,7 +284,10 @@ const AppContent: React.FC = () => {
             {/* 创建新角色 */}
             <div className="p-4 border-t transition-colors duration-200 dark:border-gray-700 light:border-gray-200">
               <h3 className="text-sm font-medium mb-3 transition-colors duration-200 dark:text-gray-400 light:text-gray-600">创建新角色</h3>
-              <button className="flex items-center gap-2 transition-colors duration-200 dark:text-gray-400 light:text-gray-600 dark:hover:text-white light:hover:text-gray-900">
+              <button 
+                onClick={handleCreateCharacter}
+                className="flex items-center gap-2 transition-colors duration-200 dark:text-gray-400 light:text-gray-600 dark:hover:text-white light:hover:text-gray-900 dark:hover:bg-gray-700 light:hover:bg-gray-100 rounded-lg p-2 w-full"
+              >
                 <Plus className="w-4 h-4" />
                 <span className="text-sm">添加自定义角色</span>
               </button>
@@ -244,11 +315,20 @@ const AppContent: React.FC = () => {
             isLoading={textChatLoading}
             error={textChatError}
             onSendMessage={handleTextMessageSend}
+            onAIResponse={handleAIResponse}
+            onVoiceMessage={handleVoiceMessage}
             onClearMessages={handleClearMessages}
             onRetry={handleTextChatRetry}
           />
         </Content>
       </Layout>
+
+      {/* 创建角色模态框 */}
+      <CreateCharacterModal
+        isOpen={isCreateModalOpen}
+        onClose={handleCloseCreateModal}
+        onCharacterCreated={handleCharacterCreated}
+      />
     </ErrorBoundary>
   );
 };

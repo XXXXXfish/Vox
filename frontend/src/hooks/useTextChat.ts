@@ -9,6 +9,7 @@ interface UseTextChatReturn {
   error: string | null;
   sessionId: string | null;
   sendTextMessage: (message: string, role: Role) => Promise<void>;
+  addDirectMessage: (message: ChatMessage, roleId: string) => void; // 新增：直接添加消息
   loadConversation: (roleId: string) => void;
   clearError: () => void;
   clearMessages: (roleId: string) => void;
@@ -109,12 +110,24 @@ export const useTextChat = (): UseTextChatReturn => {
     setSessionId(null);
   }, [clearConversation]);
 
+  // 直接添加消息（用于语音处理等场景）
+  const addDirectMessage = useCallback((message: ChatMessage, roleId: string) => {
+    // 添加到全局状态
+    addMessage(roleId, message);
+    // 添加到本地显示
+    setMessages((prev: ChatMessage[]) => {
+      const prevArray = Array.isArray(prev) ? prev : [];
+      return [...prevArray, message];
+    });
+  }, [addMessage]);
+
   return {
     messages,
     isLoading,
     error,
     sessionId,
     sendTextMessage: sendTextMessageHandler,
+    addDirectMessage,
     loadConversation,
     clearError,
     clearMessages,
