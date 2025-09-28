@@ -10,6 +10,7 @@ import (
 	"vox-backend/handlers"
 	"vox-backend/services" // 使用你的模块名 vox-backend
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"gorm.io/gorm"
@@ -23,6 +24,20 @@ type AppContext struct {
 
 func setupRouter(ctx *AppContext) *gin.Engine {
 	r := gin.Default()
+	// **配置 CORS 中间件**
+	config := cors.DefaultConfig()
+	// **最宽松（开发环境推荐）：允许所有源**
+	config.AllowAllOrigins = true
+
+	// **或者更安全的方式（推荐）：指定前端的源**
+	// config.AllowOrigins = []string{"http://10.19.196.225:你的前端端口"}
+
+	// 允许的 HTTP 方法和 Header (默认配置通常足够，但保险起见可以列出)
+	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
+	config.AllowHeaders = []string{"Origin", "Content-Type", "Authorization", "X-Session-ID"} // 确保允许我们自定义的 Header
+
+	// 将配置应用到路由
+	r.Use(cors.New(config))
 
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -49,6 +64,12 @@ func setupRouter(ctx *AppContext) *gin.Engine {
 
 		// **核心：注册 TTS 合成 Handler**
 		api.POST("/tts", handlers.TTSHandler(ctx.AIService))
+
+		// **核心：注册语音聊天 Handler**
+		api.POST("/voice/chat", handlers.VoiceChatHandler(ctx.DB, ctx.AIService))
+
+		// **新增：历史消息查询接口**
+		api.GET("/history/:session_id", handlers.GetChatHistoryHandler(ctx.DB))
 	}
 
 	return r
@@ -97,8 +118,10 @@ func main() {
 	router := setupRouter(appContext)
 
 	// 7. 启动服务器
-	log.Println("Server starting on :8080...")
-	if err := router.Run(":8080"); err != nil {
+	// 绑定到 0.0.0.0:8080 以允许局域网访问
+	log.Println("Server starting on 0.0.0.0:8080...")
+	log.Println("局域网访问地址: http://10.19.196.225:8080")
+	if err := router.Run("0.0.0.0:8080"); err != nil {
 		log.Fatal("Server failed to start:", err)
 	}
 }
